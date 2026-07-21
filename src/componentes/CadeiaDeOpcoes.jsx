@@ -1,17 +1,23 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buscarSeries, buscarVencimentos, cadeiaEhGratis } from '../lib/opcoes.js'
 import { emPreco } from '../lib/formato.js'
 import { diasAteVencimento, textoDoPrazo } from '../lib/vencimento.js'
 
-const LIMITE_LINHAS = 80
+const TAMANHOS_DE_PAGINA = [10, 20, 50]
 
 /**
- * Consulta a cadeia de opções do ativo e deixa você carregar uma série
- * direto no formulário, sem digitar nada.
+ * Consulta a cadeia de opções do ativo e deixa você carregar uma série no
+ * formulário (usar) ou somá-la à estratégia (+ perna), sem digitar nada.
  *
  * Os preços aqui são de FECHAMENTO do último pregão, não do momento atual.
  */
-export default function CadeiaDeOpcoes({ ticker, precoAtivo, aoEscolherSerie }) {
+export default function CadeiaDeOpcoes({
+  ticker,
+  precoAtivo,
+  aoEscolherSerie,
+  aoAdicionarPerna,
+  aoCarregarSeries,
+}) {
   const [vencimentos, setVencimentos] = useState([])
   const [vencimento, setVencimento] = useState('')
   const [series, setSeries] = useState([])
@@ -20,21 +26,19 @@ export default function CadeiaDeOpcoes({ ticker, precoAtivo, aoEscolherSerie }) 
   const [erro, setErro] = useState('')
   const [lado, setLado] = useState('CALL')
   const [pertoDoDinheiro, setPertoDoDinheiro] = useState(true)
+  const [porPagina, setPorPagina] = useState(TAMANHOS_DE_PAGINA[0])
+  const [pagina, setPagina] = useState(1)
   const busca = useRef(null)
-
-  const reiniciar = () => {
-    setVencimento('')
-    setSeries([])
-    setDataDosPrecos('')
-    setErro('')
-  }
 
   const carregarVencimentos = useCallback(async () => {
     busca.current?.abort()
     const controle = new AbortController()
     busca.current = controle
 
-    reiniciar()
+    setVencimento('')
+    setSeries([])
+    setDataDosPrecos('')
+    setErro('')
     setVencimentos([])
     setCarregando('vencimentos')
     try {
@@ -53,6 +57,7 @@ export default function CadeiaDeOpcoes({ ticker, precoAtivo, aoEscolherSerie }) 
     setVencimento(data)
     if (!data) {
       setSeries([])
+      aoCarregarSeries?.([], '')
       return
     }
 
@@ -67,15 +72,17 @@ export default function CadeiaDeOpcoes({ ticker, precoAtivo, aoEscolherSerie }) 
       if (controle.signal.aborted) return
       setSeries(resultado.series)
       setDataDosPrecos(resultado.dataDosPrecos || '')
+      aoCarregarSeries?.(resultado.series, data)
     } catch (e) {
       if (!controle.signal.aborted) {
         setErro(e.message)
         setSeries([])
+        aoCarregarSeries?.([], '')
       }
     } finally {
       if (!controle.signal.aborted) setCarregando('')
     }
-  }, [ticker])
+  }, [ticker, aoCarregarSeries])
 
   const visiveis = useMemo(() => {
     let lista = series.filter((s) => s.tipo === lado)
@@ -84,6 +91,23 @@ export default function CadeiaDeOpcoes({ ticker, precoAtivo, aoEscolherSerie }) 
     }
     return lista
   }, [series, lado, pertoDoDinheiro, precoAtivo])
+
+  const totalPaginas = Math.max(1, Math.ceil(visiveis.length / porPagina))
+
+  // Trocar filtro ou tamanho de página não pode deixar você numa página vazia.
+  useEffect(() => {
+    setPagina((atual) => Math.min(atual, totalPaginas))
+  }, [totalPaginas])
+
+  const daPagina = useMemo(
+    () => visiveis.slice((pagina - 1) * porPagina, pagina * porPagina),
+    [visiveis, pagina, porPagina],
+  )
+
+  const trocarFiltro = (acao) => {
+    acao()
+    setPagina(1)
+  }
 
   if (!ticker) {
     return (
@@ -123,7 +147,7 @@ export default function CadeiaDeOpcoes({ ticker, precoAtivo, aoEscolherSerie }) 
           <select
             id="vencimento-cadeia"
             value={vencimento}
-            onChange={(e) => carregarSeries(e.target.value)}
+            onChange={(e) => trocarFiltro(() => carregarSeries(e.target.value))}
           >
             <option value="">— escolher vencimento —</option>
             {vencimentos.map((data) => (
@@ -146,20 +170,35 @@ export default function CadeiaDeOpcoes({ ticker, precoAtivo, aoEscolherSerie }) 
                   key={t}
                   type="button"
                   className={lado === t ? 'pilula ativa' : 'pilula'}
-                  onClick={() => setLado(t)}
+                  onClick={() => trocarFiltro(() => setLado(t))}
                   aria-pressed={lado === t}
                 >
                   {t}
                 </button>
               ))}
             </div>
+
             <label className="caixa-marcar">
               <input
                 type="checkbox"
                 checked={pertoDoDinheiro}
-                onChange={(e) => setPertoDoDinheiro(e.target.checked)}
+                onChange={(e) => trocarFiltro(() => setPertoDoDinheiro(e.target.checked))}
               />
               só perto do dinheiro (±25%)
+            </label>
+
+            <label className="caixa-marcar">
+              por página
+              <select
+                className="select-compacto"
+                value={porPagina}
+                onChange={(e) => trocarFiltro(() => setPorPagina(Number(e.target.value)))}
+                aria-label="Séries por página"
+              >
+                {TAMANHOS_DE_PAGINA.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
             </label>
           </div>
 
@@ -181,11 +220,11 @@ export default function CadeiaDeOpcoes({ ticker, precoAtivo, aoEscolherSerie }) 
                   <th scope="col">Bid</th>
                   <th scope="col">Ask</th>
                   <th scope="col">Vol.</th>
-                  <th scope="col"><span className="sr-only">Usar</span></th>
+                  <th scope="col"><span className="sr-only">Ações</span></th>
                 </tr>
               </thead>
               <tbody>
-                {visiveis.slice(0, LIMITE_LINHAS).map((s) => (
+                {daPagina.map((s) => (
                   <tr key={s.codigo} className={s.volume > 0 ? undefined : 'linha-parada'}>
                     <td className="codigo-serie">{s.codigo}</td>
                     <td>{emPreco(s.strike)}</td>
@@ -193,13 +232,17 @@ export default function CadeiaDeOpcoes({ ticker, precoAtivo, aoEscolherSerie }) 
                     <td>{s.bid > 0 ? emPreco(s.bid) : '—'}</td>
                     <td>{s.ask > 0 ? emPreco(s.ask) : '—'}</td>
                     <td>{(s.volume || 0).toLocaleString('pt-BR')}</td>
-                    <td>
+                    <td className="celula-acoes">
+                      <button type="button" className="botao-texto" onClick={() => aoEscolherSerie(s)}>
+                        usar
+                      </button>
                       <button
                         type="button"
                         className="botao-texto"
-                        onClick={() => aoEscolherSerie(s)}
+                        onClick={() => aoAdicionarPerna(s)}
+                        title="Somar esta série à estratégia"
                       >
-                        usar
+                        + perna
                       </button>
                     </td>
                   </tr>
@@ -208,15 +251,33 @@ export default function CadeiaDeOpcoes({ ticker, precoAtivo, aoEscolherSerie }) 
             </table>
           </div>
 
-          {visiveis.length === 0 && (
+          {visiveis.length === 0 ? (
             <p className="ajuda">
               Nenhuma {lado} nesse filtro. Desmarque "perto do dinheiro" para ver todas.
             </p>
-          )}
-          {visiveis.length > LIMITE_LINHAS && (
-            <p className="ajuda">
-              Mostrando as {LIMITE_LINHAS} primeiras de {visiveis.length} séries.
-            </p>
+          ) : (
+            <div className="paginacao">
+              <button
+                type="button"
+                className="botao-secundario"
+                onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                disabled={pagina <= 1}
+              >
+                ← anterior
+              </button>
+              <span className="ajuda">
+                {(pagina - 1) * porPagina + 1}–{Math.min(pagina * porPagina, visiveis.length)}
+                {' de '}{visiveis.length} · página {pagina} de {totalPaginas}
+              </span>
+              <button
+                type="button"
+                className="botao-secundario"
+                onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                disabled={pagina >= totalPaginas}
+              >
+                próxima →
+              </button>
+            </div>
           )}
         </>
       )}

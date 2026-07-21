@@ -155,6 +155,7 @@ main {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  min-width: 0;
 }
 
 @media (min-width: 64rem) {
@@ -505,6 +506,9 @@ button:focus-visible {
 .rolagem-tabela {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  /* Item de flex tem min-width:auto, que vale o min-content da tabela.
+     Sem isto, a tabela larga empurra o cartão em vez de rolar dentro dele. */
+  min-width: 0;
 }
 
 .tabela {
@@ -596,10 +600,21 @@ button:focus-visible {
 /* --- Gráfico ------------------------------------------------------------ */
 
 .moldura-grafico {
-  /* Margem negativa recupera o padding do cartão, para o gráfico ocupar a
-     largura toda no celular sem cortar as pontas. */
-  margin: 0 -0.5rem;
-  width: calc(100% + 1rem);
+  /* O ResponsiveContainer do recharts guarda a última largura medida. Quando
+     a coluna encolhe, essa medida velha vira o min-content deste item de flex
+     e empurraria o layout inteiro. min-width:0 + overflow deixam o gráfico
+     encolher junto em vez de estourar a página. */
+  min-width: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 40rem) {
+  /* Só no celular: a margem negativa recupera o padding do cartão para o
+     gráfico ir de ponta a ponta. */
+  .moldura-grafico {
+    margin: 0 -0.5rem;
+    width: calc(100% + 1rem);
+  }
 }
 
 .dica {
@@ -672,6 +687,164 @@ button:focus-visible {
 }
 .linha-salvar .ajuda {
   flex: 1 1 14rem;
+}
+
+/* --- Paginação da cadeia ------------------------------------------------- */
+
+.paginacao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.select-compacto {
+  width: auto;
+  min-height: 34px;
+  padding: 0.2rem 1.6rem 0.2rem 0.5rem;
+  font-size: 0.8125rem;
+}
+
+/* --- Estratégia (pernas) -------------------------------------------------- */
+
+.etiqueta {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--serie-1-fundo);
+  color: var(--serie-1);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.montagens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.montagens button {
+  flex: 1 1 9rem;
+}
+
+.lista-pernas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  counter-reset: perna;
+}
+
+.perna {
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  padding: 0.7rem 0.75rem;
+  background: var(--superficie-2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.perna-fixa {
+  border-style: dashed;
+}
+
+.perna-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.grade-perna {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+@media (min-width: 34rem) {
+  .grade-perna {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.grade-perna input,
+.grade-perna select {
+  min-height: 40px;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* --- Comparador de séries -------------------------------------------------- */
+
+.atalhos-alvo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.atalhos-alvo button {
+  flex: 1 1 4.5rem;
+  min-height: 38px;
+  padding: 0.4rem 0.5rem;
+}
+
+.bloco-oportunidade {
+  border-top: 1px solid var(--borda);
+  padding-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lista-oportunidades {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  counter-reset: oportunidade;
+}
+
+.lista-oportunidades > li {
+  border: 1px solid var(--borda);
+  border-left: 3px solid var(--serie-1);
+  border-radius: 0 10px 10px 0;
+  padding: 0.6rem 0.75rem;
+  background: var(--superficie-2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lista-oportunidades > li:first-child {
+  border-left-color: var(--ganho);
+}
+
+.lista-oportunidades > li > button {
+  align-self: flex-start;
+  margin-left: -0.35rem;
+}
+
+.linha-oportunidade {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.valor-oportunidade {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.valor-oportunidade strong {
+  font-size: 1.0625rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

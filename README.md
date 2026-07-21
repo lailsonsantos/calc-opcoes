@@ -40,11 +40,14 @@ src/
     acoes.js          as 20 ações da lista
     cotacao.js        busca de cotação (função própria → brapi direto)
     opcoes.js         cadeia de opções (vencimentos e séries)
+    estrategias.js    montagens prontas e o comparador de séries
     vencimento.js     dias restantes e o aviso de reta final
     armazenamento.js  posições no localStorage, indexadas pelo código
   componentes/
     Formulario.jsx       campos da opção + seletor de ação + book
-    CadeiaDeOpcoes.jsx   navegador das séries negociadas do ativo
+    CadeiaDeOpcoes.jsx   navegador paginado das séries do ativo
+    Estrategia.jsx       pernas extras e montagens prontas
+    Oportunidades.jsx    comparador de séries sob um preço-alvo
     Resumo.jsx           cartões de números e o painel do spread
     GraficoPayoff.jsx    o gráfico (recharts), tabela e expandir/retrair
     SimulacoesSalvas.jsx a carteira: posições salvas e resultado
@@ -95,6 +98,40 @@ do plano grátis não basta. Para elas, a ferramenta avisa e você preenche à m
 
 Os preços da cadeia são de **fechamento do último pregão**, não do momento atual.
 Confira o book na corretora antes de operar.
+
+## Estratégias
+
+Uma posição simples é uma estratégia de **uma perna**. O botão "+ adicionar perna"
+(ou o "+ perna" na cadeia de opções) soma outras, e o gráfico e o resumo passam a
+mostrar o resultado da estrutura inteira: perda máxima, ganho máximo e todos os
+pontos de empate (um straddle tem dois).
+
+Há montagens prontas — trava de alta, trava de baixa, straddle e strangle — que se
+armam com as séries reais da cadeia carregada.
+
+A conta é exata, não numérica: o payoff é linear por partes e só dobra nos strikes,
+então os extremos e os empates saem por interpolação nos próprios strikes.
+
+## Comparar séries sob um alvo
+
+**Esta parte não prevê nada, e é importante entender por quê.**
+
+Não existe cálculo que aponte a opção que vai dar lucro — isso exigiria saber o
+preço futuro do ativo. O comparador responde uma pergunta *condicional*:
+
+> Se o ativo terminar no preço-alvo que **você** digitou, qual série teria rendido mais?
+
+É aritmética, não previsão. Muda o alvo, muda o ranking inteiro. Três listas:
+
+- **Melhor compra** — maior retorno sobre o custo, entrando pelo ask.
+- **Melhor venda** — séries que virariam pó no alvo, ordenadas pelo prêmio. Exige
+  pelo menos **5% de folga** entre o alvo e o strike: sem esse piso o ranking sempre
+  apontaria a opção mais perto de ser exercida, que é a mais arriscada.
+- **Melhor estratégia** — travas de dois strikes, que barateiam a entrada e põem
+  teto na perda.
+
+Só entram séries com giro no pregão e com preço no lado do book que interessa — um
+preço ótimo numa opção que ninguém negocia não serve para nada.
 
 ## Minhas opções (a carteira)
 

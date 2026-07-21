@@ -170,3 +170,150 @@ export function cenarios(operacao, precoAtual, variacoes = [0.05, 0.1]) {
     return { variacao, preco, resultado: resultadoTotal(operacao, preco) }
   })
 }
+
+// =========================================================================
+// Estratégias: várias pernas somadas (travas, straddles, o que você montar)
+//
+// Uma "perna" tem o mesmo formato de uma operação. Uma posição simples é
+// só uma estratégia de uma perna — o app trata as duas do mesmo jeito.
+// =========================================================================
+
+/** Lucro/prejuízo somado de todas as pernas num preço final. */
+export function resultadoDaEstrategia(pernas, precoFinal) {
+  return pernas.reduce((soma, perna) => soma + resultadoTotal(perna, precoFinal), 0)
+}
+
+/**
+ * Caixa na montagem: negativo = débito (você paga para montar),
+ * positivo = crédito (você recebe).
+ */
+export function caixaDaEstrategia(pernas) {
+  return pernas.reduce((soma, p) => {
+    const valor = p.premio * p.quantidade
+    return soma + (p.posicao === 'vendida' ? valor : -valor)
+  }, 0)
+}
+
+/**
+ * Inclinação do payoff para preços acima do maior strike.
+ * Só as CALLs continuam ganhando/perdendo valor lá em cima.
+ */
+function inclinacaoAcima(pernas) {
+  return pernas.reduce((s, p) => {
+    if (p.tipo !== 'CALL') return s
+    return s + (p.posicao === 'vendida' ? -1 : 1) * p.quantidade
+  }, 0)
+}
+
+function strikesOrdenados(pernas) {
+  return [...new Set(pernas.map((p) => p.strike))].sort((a, b) => a - b)
+}
+
+/**
+ * Perda e ganho máximos da estratégia.
+ *
+ * O payoff é linear por partes e só "dobra" nos strikes — então os extremos
+ * estão nos strikes, no zero, ou no infinito. Não precisa varrer nada.
+ */
+export function extremosDaEstrategia(pernas) {
+  if (pernas.length === 0) {
+    return { ganhoMaximo: 0, perdaMaxima: 0, ganhoIlimitado: false, perdaIlimitada: false }
+  }
+
+  const candidatos = [0, ...strikesOrdenados(pernas)]
+  const valores = candidatos.map((p) => resultadoDaEstrategia(pernas, p))
+
+  const inclinacao = inclinacaoAcima(pernas)
+  return {
+    ganhoMaximo: inclinacao > 0 ? Infinity : Math.max(...valores),
+    perdaMaxima: inclinacao < 0 ? -Infinity : Math.min(...valores),
+    ganhoIlimitado: inclinacao > 0,
+    perdaIlimitada: inclinacao < 0,
+  }
+}
+
+/**
+ * Os preços em que a estratégia empata. Uma trava tem um; um straddle tem
+ * dois; algumas montagens não têm nenhum.
+ *
+ * Cada trecho entre strikes é uma reta, então dá para achar o zero exato por
+ * interpolação, sem varredura numérica.
+ */
+export function breakEvensDaEstrategia(pernas) {
+  if (pernas.length === 0) return []
+
+  const strikes = strikesOrdenados(pernas)
+  const zeros = []
+
+  // Trechos fechados: [0, k1], [k1, k2], ...
+  const bordas = [0, ...strikes]
+  for (let i = 0; i < bordas.length - 1; i++) {
+    const a = bordas[i]
+    const b = bordas[i + 1]
+    const fa = resultadoDaEstrategia(pernas, a)
+    const fb = resultadoDaEstrategia(pernas, b)
+    if (fa === 0) zeros.push(a)
+    if ((fa < 0 && fb > 0) || (fa > 0 && fb < 0)) {
+      zeros.push(a + ((b - a) * -fa) / (fb - fa))
+    }
+  }
+
+  // Última borda e o raio que vai dela até o infinito.
+  const ultimo = bordas[bordas.length - 1]
+  const fUltimo = resultadoDaEstrategia(pernas, ultimo)
+  if (fUltimo === 0) zeros.push(ultimo)
+
+  const inclinacao = inclinacaoAcima(pernas)
+  if (inclinacao !== 0) {
+    const cruzamento = ultimo - fUltimo / inclinacao
+    if (cruzamento > ultimo) zeros.push(cruzamento)
+  }
+
+  return [...new Set(zeros.map((z) => Math.round(z * 1e6) / 1e6))].sort((a, b) => a - b)
+}
+
+/** Pontos [{ preco, resultado }] do gráfico da estratégia. */
+export function serieDaEstrategia(pernas, precoAtual, opcoes = {}) {
+  const { faixa = 0.25, pontos = 61 } = opcoes
+  if (pernas.length === 0) return []
+
+  const strikes = strikesOrdenados(pernas)
+  const centro = Number.isFinite(precoAtual) && precoAtual > 0
+    ? precoAtual
+    : strikes[Math.floor(strikes.length / 2)]
+
+  let minimo = Math.max(centro * (1 - faixa), 0)
+  let maximo = centro * (1 + faixa)
+
+  // Todo strike e todo break-even precisa caber no desenho.
+  for (const marco of [...strikes, ...breakEvensDaEstrategia(pernas)]) {
+    if (Number.isFinite(marco)) {
+      minimo = Math.min(minimo, marco * 0.95)
+      maximo = Math.max(maximo, marco * 1.05)
+    }
+  }
+  minimo = Math.max(minimo, 0)
+  if (maximo <= minimo) maximo = minimo + 1
+
+  const passo = (maximo - minimo) / (pontos - 1)
+  const precos = []
+  for (let i = 0; i < pontos; i++) precos.push(minimo + passo * i)
+
+  // Os "bicos" entram exatos, senão a amostragem os arredonda.
+  for (const marco of [...strikes, ...breakEvensDaEstrategia(pernas), precoAtual]) {
+    if (Number.isFinite(marco) && marco >= minimo && marco <= maximo) precos.push(marco)
+  }
+
+  return precos
+    .sort((a, b) => a - b)
+    .filter((p, i, arr) => i === 0 || Math.abs(p - arr[i - 1]) > 1e-9)
+    .map((preco) => ({ preco, resultado: resultadoDaEstrategia(pernas, preco) }))
+}
+
+/** Cenários de variação, versão estratégia. */
+export function cenariosDaEstrategia(pernas, precoAtual, variacoes) {
+  return variacoes.map((variacao) => {
+    const preco = precoAtual * (1 + variacao)
+    return { variacao, preco, resultado: resultadoDaEstrategia(pernas, preco) }
+  })
+}
