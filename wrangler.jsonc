@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "calc-opcoes",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-07-21",
+
+  // O site estático gerado pelo Vite. A Cloudflare serve estes arquivos
+  // direto da borda; o Worker só roda no que não casa com nenhum deles.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // App de página única: qualquer rota desconhecida devolve o index.html.
+    "not_found_handling": "single-page-application"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+
+  // O token da brapi NÃO vai aqui. Ele é um secret, configurado no painel
+  // (Settings > Variables and Secrets) com o nome BRAPI_TOKEN.
+}

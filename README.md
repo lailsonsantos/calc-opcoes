@@ -51,8 +51,12 @@ src/
     Resumo.jsx           cartões de números e o painel do spread
     GraficoPayoff.jsx    o gráfico (recharts), tabela e expandir/retrair
     SimulacoesSalvas.jsx a carteira: posições salvas e resultado
-functions/api/*.js  funções serverless (Cloudflare Pages)
-api/*.js            as mesmas funções, versão Vercel
+worker/
+  index.js          roteador: /api/* aqui, o resto vai para os assets
+  brapi.js          chamada à brapi com o token (que fica só no servidor)
+  cotacao.js        rota /api/cotacao
+  opcoes.js         rota /api/opcoes
+wrangler.jsonc      configuração do Cloudflare Worker
 ```
 
 No PC o layout é de duas colunas — formulário à esquerda, resumo e gráfico à
@@ -153,38 +157,64 @@ Esse arquivo é ignorado pelo Git, e a variável só é lida em modo dev.
 > Em produção ele mora exclusivamente na variável de ambiente da hospedagem,
 > lida pela função serverless.
 
-## Publicar de graça
+## Publicar de graça — Cloudflare Workers
 
-### Cloudflare Pages (recomendado)
+O projeto é um **Worker com assets estáticos**: a Cloudflare serve o `dist/`
+direto da borda e o Worker (`worker/index.js`) só entra em ação nas rotas
+`/api/*`, onde o token da brapi fica guardado.
 
-Tem função serverless no plano grátis e não restringe uso pessoal.
+> Não é Cloudflare **Pages**. A convenção de pasta `functions/` é exclusiva do
+> Pages e não vale aqui — quem roteia é o `worker/index.js`, declarado como
+> `main` no `wrangler.jsonc`.
 
-1. `dash.cloudflare.com` → **Workers & Pages** → **Create** → **Pages** →
-   **Connect to Git**.
-2. Autorize o GitHub e escolha o repositório `calc-opcoes`.
-3. Build settings:
-   - Build command: `npm run build`
-   - Build output directory: `dist`
-4. **Settings → Variables and Secrets** → adicione o secret:
-   - Nome: `BRAPI_TOKEN`
-   - Valor: o token do painel da brapi
-   - Marque **Production** e **Preview**.
-5. Deploy. Você recebe um link `.pages.dev`.
+### Configuração no painel
 
-O arquivo `functions/api/cotacao.js` vira a rota `/api/cotacao` sozinho — não
-precisa configurar nada além do secret.
+`dash.cloudflare.com` → **Workers & Pages** → **Create** → **Connect to Git**,
+escolha `lailsonsantos/calc-opcoes` e use:
 
-### Vercel (alternativa)
+| Campo | Valor |
+|---|---|
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Version command | `npx wrangler versions upload` |
+| Root directory | `/` |
+| Production branch | `main` |
 
-1. `vercel.com` → **Import Project** → escolha o repositório.
-2. A Vercel detecta o Vite sozinha (`npm run build`, saída `dist`).
-3. **Settings → Environment Variables** → `BRAPI_TOKEN` (Production + Preview).
-4. Deploy. Link `.vercel.app`.
+⚠️ **O "Version command" precisa ser `wrangler versions upload`, não
+`wrangler deploy`.** Ele é o que roda nos branches que não são o de produção. Se
+ficar como `deploy`, um push em qualquer branch sobrescreve o site publicado.
 
-Aqui quem atende `/api/cotacao` é o arquivo `api/cotacao.js`. Os dois arquivos
-podem conviver no repositório: cada plataforma ignora o da outra.
+### O token da brapi
 
-Depois de conectado, todo `git push` republica o site sozinho.
+**Settings → Variables and Secrets** → adicione como **Secret** (não "Text"):
+
+- Nome: `BRAPI_TOKEN`
+- Valor: o token do painel da brapi
+
+Depois refaça o deploy. O token nunca entra no bundle do navegador: só o Worker
+o enxerga, via `env.BRAPI_TOKEN`.
+
+Sem token o site já funciona com PETR4, VALE3, ITUB4 e MGLU3. Com o token grátis,
+a **cotação** das 20 ações passa a funcionar — a **cadeia de opções** continua só
+no PETR4, porque essa exige o plano Pro, pago.
+
+### Testar o Worker antes de publicar
+
+```bash
+npm run build
+npm run worker      # sobe o Worker + assets em http://127.0.0.1:8788
+```
+
+E confira as rotas:
+
+```bash
+curl "http://127.0.0.1:8788/api/cotacao?ticker=PETR4"
+curl "http://127.0.0.1:8788/api/opcoes?underlying=PETR4"
+```
+
+Para publicar do seu PC, sem passar pelo Git: `npm run deploy`.
+
+Depois de conectado, todo `git push` na `main` republica o site sozinho.
 
 ## Acessibilidade e cores
 
