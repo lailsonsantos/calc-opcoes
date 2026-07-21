@@ -1,61 +1,45 @@
 /* ---------------------------------------------------------------
-   Calculadora de payoff — CSS puro, feito primeiro para o celular.
-   Paleta validada para daltonismo: aqua = lucro, vermelho = prejuízo.
-   A cor é reforço; quem carrega o sinal é a posição em relação ao zero
-   e os rótulos em texto.
+   Calculadora de payoff — CSS puro, paleta clara.
+   Mobile: uma coluna. Desktop: formulário à esquerda, resultado à
+   direita, e a carteira ocupando a largura toda embaixo.
+
+   Cores do gráfico: aqua = lucro, vermelho = prejuízo — par validado
+   para daltonismo. A cor é reforço; quem carrega o sinal é a posição
+   em relação à linha do zero e os rótulos em texto.
    --------------------------------------------------------------- */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 
-  --plano: #f9f9f7;
-  --superficie: #fcfcfb;
-  --borda: rgba(11, 11, 11, 0.12);
+  --plano: #eef1f5;
+  --superficie: #ffffff;
+  --superficie-2: #f7f9fb;
+  --borda: #dfe4ea;
+  --borda-forte: #c9d0d9;
 
-  --ink: #0b0b0b;
-  --ink-2: #52514e;
-  --ink-muted: #898781;
+  --ink: #16181d;
+  --ink-2: #545a64;
+  --ink-muted: #858c97;
 
-  --grade: #e1e0d9;
-  --eixo: #c3c2b7;
-  --eixo-forte: #898781;
+  --grade: #edeff3;
+  --eixo: #d8dce2;
+  --eixo-forte: #a8aeb8;
 
   --ganho: #1baf7a;
   --ganho-ink: #0f7d57;
+  --ganho-fundo: #eafaf3;
   --perda: #d03b3b;
   --perda-ink: #b52f2f;
+  --perda-fundo: #fdeeee;
   --serie-1: #2a78d6;
-  --aviso: #fab219;
+  --serie-1-fundo: #eaf2fd;
+  --aviso: #e8a317;
   --aviso-ink: #8a5c00;
-  --aviso-fundo: rgba(250, 178, 25, 0.14);
+  --aviso-fundo: #fdf5e3;
 
   --raio: 12px;
+  --sombra: 0 1px 2px rgba(22, 24, 29, 0.05);
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --plano: #0d0d0d;
-    --superficie: #1a1a19;
-    --borda: rgba(255, 255, 255, 0.12);
-
-    --ink: #ffffff;
-    --ink-2: #c3c2b7;
-    --ink-muted: #898781;
-
-    --grade: #2c2c2a;
-    --eixo: #383835;
-    --eixo-forte: #898781;
-
-    --ganho: #199e70;
-    --ganho-ink: #2bbb88;
-    --perda: #d03b3b;
-    --perda-ink: #e66767;
-    --serie-1: #3987e5;
-    --aviso: #fab219;
-    --aviso-ink: #fab219;
-    --aviso-fundo: rgba(250, 178, 25, 0.12);
-  }
 }
 
 * {
@@ -110,16 +94,23 @@ p {
   border: 0;
 }
 
-/* --- Estrutura --------------------------------------------------- */
+/* --- Estrutura ----------------------------------------------------- */
 
 .app {
-  max-width: 46rem;
+  /* Aproveita a tela larga, mas sem esticar o texto até ficar ilegível. */
+  max-width: 105rem;
   margin: 0 auto;
   padding: 1rem 1rem calc(2rem + env(safe-area-inset-bottom));
 }
 
+@media (min-width: 64rem) {
+  .app {
+    padding: 1.5rem 2rem 3rem;
+  }
+}
+
 .topo {
-  padding: 0.5rem 0 1rem;
+  padding: 0.25rem 0 1rem;
 }
 .topo p {
   color: var(--ink-2);
@@ -133,14 +124,43 @@ main {
   gap: 1rem;
 }
 
+/* Uma coluna no celular; duas no desktop. */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 64rem) {
+  .layout {
+    grid-template-columns: minmax(21rem, 27rem) minmax(0, 1fr);
+    align-items: start;
+    gap: 1.25rem;
+  }
+}
+
+.coluna {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
 .cartao {
   background: var(--superficie);
   border: 1px solid var(--borda);
   border-radius: var(--raio);
+  box-shadow: var(--sombra);
   padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+@media (min-width: 64rem) {
+  .cartao {
+    padding: 1.25rem;
+  }
 }
 
 .cabecalho-secao {
@@ -148,6 +168,13 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.acoes-secao {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
 }
 
 .rodape {
@@ -161,12 +188,13 @@ main {
   gap: 0.5rem;
 }
 
-/* --- Formulário --------------------------------------------------- */
+/* --- Formulário ----------------------------------------------------- */
 
 .campo {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  min-width: 0;
 }
 
 label,
@@ -181,12 +209,16 @@ select {
   /* 16px evita o zoom automático do iOS ao focar o campo. */
   font: 16px var(--sans);
   color: var(--ink);
-  background: var(--plano);
-  border: 1px solid var(--borda);
+  background: var(--superficie);
+  border: 1px solid var(--borda-forte);
   border-radius: 10px;
   padding: 0.7rem 0.75rem;
   min-height: 46px;
   width: 100%;
+}
+
+input::placeholder {
+  color: var(--ink-muted);
 }
 
 input:focus-visible,
@@ -234,6 +266,11 @@ button:focus-visible {
 .grupo-radio legend {
   margin-bottom: 0.35rem;
 }
+.grupo-radio.compacto .pilula {
+  flex: 0 0 auto;
+  min-width: 4.5rem;
+  min-height: 38px;
+}
 
 .pilula {
   flex: 1 1 8rem;
@@ -243,12 +280,11 @@ button:focus-visible {
   gap: 0.4rem;
   min-height: 46px;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--borda);
+  border: 1px solid var(--borda-forte);
   border-radius: 10px;
-  background: var(--plano);
+  background: var(--superficie);
   color: var(--ink-2);
-  font-size: 0.875rem;
-  font-weight: 500;
+  font: 500 0.875rem var(--sans);
   cursor: pointer;
   text-align: center;
 }
@@ -261,23 +297,40 @@ button:focus-visible {
 .pilula.ativa {
   border-color: var(--serie-1);
   color: var(--serie-1);
-  background: color-mix(in srgb, var(--serie-1) 10%, transparent);
+  background: var(--serie-1-fundo);
 }
 .pilula:has(input:focus-visible) {
   outline: 2px solid var(--serie-1);
   outline-offset: 2px;
 }
 
-/* --- Botões -------------------------------------------------------- */
+.caixa-marcar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8125rem;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.caixa-marcar input {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  padding: 0;
+  accent-color: var(--serie-1);
+}
+
+/* --- Botões ---------------------------------------------------------- */
 
 .botao,
 .botao-secundario {
   font: 500 0.875rem var(--sans);
-  min-height: 46px;
+  min-height: 44px;
   padding: 0.6rem 1rem;
   border-radius: 10px;
   border: 1px solid transparent;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .botao {
@@ -285,14 +338,17 @@ button:focus-visible {
   color: #fff;
 }
 .botao:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
 }
 
 .botao-secundario {
-  background: var(--plano);
-  border-color: var(--borda);
+  background: var(--superficie);
+  border-color: var(--borda-forte);
   color: var(--ink-2);
+}
+.botao-secundario:hover:not(:disabled) {
+  background: var(--superficie-2);
 }
 .botao-secundario:disabled {
   opacity: 0.5;
@@ -307,12 +363,18 @@ button:focus-visible {
   border: 0;
   color: var(--serie-1);
   font: 500 0.8125rem var(--sans);
-  padding: 0.5rem;
-  margin: -0.5rem;
+  padding: 0.4rem 0.35rem;
   cursor: pointer;
+  white-space: nowrap;
+}
+.botao-texto:hover {
+  text-decoration: underline;
+}
+.botao-texto.perigo {
+  color: var(--perda-ink);
 }
 
-/* --- Mensagens ------------------------------------------------------ */
+/* --- Mensagens -------------------------------------------------------- */
 
 .ajuda {
   font-size: 0.8125rem;
@@ -342,7 +404,7 @@ button:focus-visible {
   padding: 0.6rem 0.75rem;
 }
 
-/* --- Cartões de resumo ---------------------------------------------- */
+/* --- Cartões de resumo ------------------------------------------------ */
 
 .grade-cartoes {
   display: grid;
@@ -355,9 +417,14 @@ button:focus-visible {
     grid-template-columns: 1fr 1fr;
   }
 }
-@media (min-width: 44rem) {
+@media (min-width: 52rem) {
   .grade-cartoes {
     grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (min-width: 90rem) {
+  .grade-cartoes {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -366,7 +433,7 @@ button:focus-visible {
   flex-direction: column;
   gap: 0.15rem;
   padding: 0.7rem 0.75rem;
-  background: var(--plano);
+  background: var(--superficie-2);
   border: 1px solid var(--borda);
   border-radius: 10px;
 }
@@ -389,7 +456,7 @@ button:focus-visible {
   line-height: 1.35;
 }
 
-/* Tons dos números: sempre acompanhados do rótulo em texto. */
+/* Tons: sempre acompanhados do rótulo em texto, nunca cor sozinha. */
 .tom-ganho {
   color: var(--ganho-ink);
 }
@@ -407,19 +474,20 @@ button:focus-visible {
   color: var(--perda-ink);
 }
 
-/* --- Painel do spread ------------------------------------------------ */
+/* --- Painel do spread -------------------------------------------------- */
 
 .painel-saida {
   padding: 0.85rem;
   border: 1px solid var(--borda);
   border-radius: 10px;
-  background: var(--plano);
+  background: var(--superficie-2);
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
 }
 .painel-saida.com-alerta {
   border-color: var(--aviso);
+  background: var(--aviso-fundo);
 }
 
 .valor-saida {
@@ -432,7 +500,7 @@ button:focus-visible {
   font-weight: 500;
 }
 
-/* --- Tabelas --------------------------------------------------------- */
+/* --- Tabelas ----------------------------------------------------------- */
 
 .rolagem-tabela {
   overflow-x: auto;
@@ -476,22 +544,71 @@ button:focus-visible {
   border-bottom: 0;
 }
 
-/* --- Gráfico ---------------------------------------------------------- */
+.tabela tbody tr:hover {
+  background: var(--superficie-2);
+}
+
+.tabela tfoot th,
+.tabela tfoot td {
+  border-bottom: 0;
+  border-top: 2px solid var(--borda-forte);
+  font-size: 0.8125rem;
+  padding-top: 0.7rem;
+}
+
+.codigo-serie {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.8125rem;
+  letter-spacing: -0.01em;
+}
+
+.tabela-cadeia {
+  min-width: 30rem;
+}
+
+/* Série sem negócio no pregão: existe, mas ninguém negociou. */
+.linha-parada td {
+  color: var(--ink-muted);
+}
+
+.tabela-carteira {
+  min-width: 52rem;
+}
+
+.celula-operacao {
+  text-align: left;
+}
+
+.celula-acoes {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+.filtros-cadeia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* --- Gráfico ------------------------------------------------------------ */
 
 .moldura-grafico {
-  /* Margem negativa recupera o espaço do padding do cartão, para o
-     gráfico ocupar a largura toda no celular sem cortar as pontas. */
+  /* Margem negativa recupera o padding do cartão, para o gráfico ocupar a
+     largura toda no celular sem cortar as pontas. */
   margin: 0 -0.5rem;
   width: calc(100% + 1rem);
 }
 
 .dica {
   background: var(--superficie);
-  border: 1px solid var(--borda);
+  border: 1px solid var(--borda-forte);
   border-radius: 8px;
   padding: 0.5rem 0.65rem;
   font-size: 0.8125rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 14px rgba(22, 24, 29, 0.12);
 }
 .dica-preco {
   color: var(--ink-2);
@@ -527,7 +644,7 @@ button:focus-visible {
 .marca-empate {
   background: repeating-linear-gradient(
     to right,
-    var(--ink-muted) 0 4px,
+    var(--eixo-forte) 0 4px,
     transparent 4px 7px
   );
 }
@@ -545,55 +662,16 @@ button:focus-visible {
   background: var(--perda);
 }
 
-/* --- Simulações salvas ------------------------------------------------ */
+/* --- Carteira ----------------------------------------------------------- */
 
 .linha-salvar {
   display: flex;
-  gap: 0.5rem;
-}
-.linha-salvar input {
-  flex: 1;
-  min-width: 0;
-}
-
-.lista-salvas {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.lista-salvas li {
-  display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.6rem 0.75rem;
-  background: var(--plano);
-  border: 1px solid var(--borda);
-  border-radius: 10px;
+  gap: 0.75rem;
 }
-
-.salva-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.salva-info strong {
-  font-size: 0.9375rem;
-  overflow-wrap: anywhere;
-}
-
-.salva-acoes {
-  display: flex;
-  gap: 0.4rem;
-}
-.salva-acoes button {
-  min-height: 40px;
-  padding: 0.4rem 0.7rem;
+.linha-salvar .ajuda {
+  flex: 1 1 14rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

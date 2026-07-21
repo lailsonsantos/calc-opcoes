@@ -1,5 +1,6 @@
 import { ACOES, precisaDeToken } from '../lib/acoes.js'
 import { emDataHora } from '../lib/formato.js'
+import { classificarPrazo, diasAteVencimento, textoDoPrazo } from '../lib/vencimento.js'
 
 /**
  * Fases 2, 6 e 7: os campos de entrada da operação.
@@ -15,6 +16,15 @@ export default function Formulario({ valores, aoMudar, cotacao, aoSelecionarAcao
   // type="text" + inputMode="decimal": deixa digitar vírgula e abre o
   // teclado numérico no celular (type="number" recusa vírgula em alguns navegadores).
   const numerico = { type: 'text', inputMode: 'decimal', autoComplete: 'off' }
+
+  const dias = diasAteVencimento(valores.vencimento)
+  const situacao = classificarPrazo(dias)
+  const prazo = {
+    texto: Number.isFinite(dias) ? textoDoPrazo(dias) : '',
+    classe: situacao === 'vencida' || situacao === 'hoje' || situacao === 'reta-final'
+      ? 'aviso'
+      : 'ajuda',
+  }
 
   return (
     <section className="cartao" aria-labelledby="titulo-dados">
@@ -69,9 +79,27 @@ export default function Formulario({ valores, aoMudar, cotacao, aoSelecionarAcao
         )}
       </div>
 
-      <div className="campo">
-        <label htmlFor="codigo">Código da opção</label>
-        <input id="codigo" type="text" autoComplete="off" placeholder="BBASG198W4" {...campo('codigo')} />
+      <div className="grade-campos">
+        <div className="campo">
+          <label htmlFor="codigo">Código da opção</label>
+          <input
+            id="codigo"
+            type="text"
+            autoComplete="off"
+            placeholder="BBASG198W4"
+            spellCheck="false"
+            {...campo('codigo')}
+          />
+          <span className="ajuda">Identifica a posição na lista salva.</span>
+        </div>
+
+        <div className="campo">
+          <label htmlFor="vencimento">Vencimento</label>
+          <input id="vencimento" type="date" {...campo('vencimento')} />
+          {prazo.texto && (
+            <span className={prazo.classe}>{prazo.texto}</span>
+          )}
+        </div>
       </div>
 
       <fieldset className="grupo-radio">

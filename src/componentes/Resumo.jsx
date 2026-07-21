@@ -11,11 +11,16 @@ import {
   temSpreadAlto,
 } from '../lib/payoff.js'
 import { emPorcento, emPreco, emReais, emReaisComSinal } from '../lib/formato.js'
+import { avisoDoPrazo, classificarPrazo, diasAteVencimento, textoDoPrazo } from '../lib/vencimento.js'
 
 const VARIACOES = [-0.1, -0.05, 0.05, 0.1]
 
 /** Fases 5 e 6: os números-chave em destaque, acima do gráfico. */
-export default function Resumo({ operacao, precoAtual, bid, ask, usandoBook }) {
+export default function Resumo({ operacao, precoAtual, bid, ask, usandoBook, vencimento }) {
+  const dias = diasAteVencimento(vencimento)
+  const situacao = classificarPrazo(dias)
+  const aviso = avisoDoPrazo(dias)
+
   const custo = useMemo(() => custoTotal(operacao), [operacao])
   const perda = useMemo(() => perdaMaxima(operacao), [operacao])
   const ganho = useMemo(() => ganhoMaximo(operacao), [operacao])
@@ -100,7 +105,22 @@ export default function Resumo({ operacao, precoAtual, bid, ask, usandoBook }) {
                 : 'dentro do dinheiro'
           }
         />
+
+        <Numero
+          rotulo="Vencimento"
+          valor={Number.isFinite(dias) ? textoDoPrazo(dias) : '—'}
+          tom={situacao === 'vencida' || situacao === 'hoje' || situacao === 'reta-final'
+            ? 'aviso'
+            : undefined}
+          nota={vencimento ? formatarData(vencimento) : 'preencha a data de vencimento'}
+        />
       </div>
+
+      {aviso && (
+        <p className="alerta" role="status">
+          <strong>⏳ {situacao === 'vencida' ? 'Opção vencida.' : 'Atenção ao prazo.'}</strong> {aviso}
+        </p>
+      )}
 
       {/* Fase 6: o custo real de errar a entrada numa opção ilíquida. */}
       {saida && (
@@ -147,6 +167,11 @@ export default function Resumo({ operacao, precoAtual, bid, ask, usandoBook }) {
       </div>
     </section>
   )
+}
+
+function formatarData(iso) {
+  const [ano, mes, dia] = String(iso).split('-')
+  return dia ? `${dia}/${mes}/${ano}` : iso
 }
 
 function Numero({ rotulo, valor, nota, tom }) {

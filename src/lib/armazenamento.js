@@ -1,5 +1,9 @@
-// Fase 8: simulações salvas no próprio navegador (localStorage).
+// Opções salvas no próprio navegador (localStorage).
 // Sem conta, sem backend — os dados ficam só neste aparelho.
+//
+// O IDENTIFICADOR é o código da opção (ex.: BBASG198W4). Salvar de novo o
+// mesmo código atualiza a posição em vez de criar uma duplicada — é o que
+// permite usar a lista como acompanhamento da carteira.
 
 const CHAVE = 'calc-opcoes:simulacoes'
 
@@ -22,20 +26,32 @@ function gravar(lista) {
   }
 }
 
-export function listarSimulacoes() {
-  return ler().sort((a, b) => (b.salvoEm || '').localeCompare(a.salvoEm || ''))
+function ordenar(lista) {
+  return [...lista].sort((a, b) => (b.salvoEm || '').localeCompare(a.salvoEm || ''))
 }
 
-/** Salva (ou sobrescreve, se o nome já existir) e devolve a lista atualizada. */
-export function salvarSimulacao(nome, dados) {
-  const limpo = nome.trim()
-  if (!limpo) return listarSimulacoes()
+export function listarSimulacoes() {
+  return ordenar(ler())
+}
 
-  const lista = ler().filter((s) => s.nome.toLowerCase() !== limpo.toLowerCase())
+/**
+ * Salva a posição sob o código da opção.
+ * `precoEntrada` é congelado aqui: é o que você pagou, e não muda depois.
+ * `dados.precoAtivo` continua vivo — é ele que a atualização de cotação mexe.
+ */
+export function salvarSimulacao(codigo, dados, precoEntrada) {
+  const id = String(codigo || '').trim().toUpperCase()
+  if (!id) return listarSimulacoes()
+
+  const lista = ler().filter((s) => s.id !== id)
+  const anterior = ler().find((s) => s.id === id)
+
   lista.push({
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    nome: limpo,
+    id,
+    codigo: id,
     salvoEm: new Date().toISOString(),
+    criadoEm: anterior?.criadoEm || new Date().toISOString(),
+    precoEntrada,
     dados,
   })
   gravar(lista)
@@ -44,5 +60,21 @@ export function salvarSimulacao(nome, dados) {
 
 export function apagarSimulacao(id) {
   gravar(ler().filter((s) => s.id !== id))
+  return listarSimulacoes()
+}
+
+/** Tickers distintos entre as posições salvas — para atualizar as cotações. */
+export function tickersSalvos() {
+  return [...new Set(ler().map((s) => s.dados?.ticker).filter(Boolean))]
+}
+
+/** Aplica um preço novo do ativo a todas as posições daquele ticker. */
+export function atualizarPrecoDoAtivo(ticker, preco, quando = new Date().toISOString()) {
+  const lista = ler().map((s) =>
+    s.dados?.ticker === ticker
+      ? { ...s, cotadoEm: quando, dados: { ...s.dados, precoAtivo: String(preco) } }
+      : s,
+  )
+  gravar(lista)
   return listarSimulacoes()
 }

@@ -20,7 +20,7 @@ import { emPreco, emReaisComSinal } from '../lib/formato.js'
  * linha do zero, que é rotulada. Assim o gráfico continua legível para quem
  * não distingue as duas cores.
  */
-export default function GraficoPayoff({ operacao, precoAtual }) {
+export default function GraficoPayoff({ operacao, precoAtual, expandido, aoAlternarExpansao }) {
   const [tabela, setTabela] = useState(false)
 
   const dados = useMemo(() => serieDePayoff(operacao, precoAtual), [operacao, precoAtual])
@@ -46,9 +46,19 @@ export default function GraficoPayoff({ operacao, precoAtual }) {
     <section className="cartao" aria-labelledby="titulo-grafico">
       <div className="cabecalho-secao">
         <h2 id="titulo-grafico">Ganho e perda no vencimento</h2>
-        <button type="button" className="botao-texto" onClick={() => setTabela((v) => !v)}>
-          {tabela ? 'ver gráfico' : 'ver tabela'}
-        </button>
+        <div className="acoes-secao">
+          <button type="button" className="botao-texto" onClick={() => setTabela((v) => !v)}>
+            {tabela ? 'ver gráfico' : 'ver tabela'}
+          </button>
+          <button
+            type="button"
+            className="botao-texto"
+            onClick={aoAlternarExpansao}
+            aria-expanded={expandido}
+          >
+            {expandido ? '⤡ retrair' : '⤢ expandir'}
+          </button>
+        </div>
       </div>
       <p className="ajuda">
         Resultado total em reais conforme o preço do ativo no dia do vencimento.
@@ -58,7 +68,7 @@ export default function GraficoPayoff({ operacao, precoAtual }) {
         <TabelaDePontos dados={dados} be={be} precoAtual={precoAtual} />
       ) : (
         <div className="moldura-grafico">
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={expandido ? 520 : 300}>
             <LineChart data={dados} margin={{ top: 20, right: 10, bottom: 4, left: 0 }}>
               <defs>
                 <linearGradient id="gradientePayoff" x1="0" y1="0" x2="0" y2="1">

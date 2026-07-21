@@ -12,6 +12,12 @@ import {
   serieDePayoff,
   cenarios,
 } from './payoff.js'
+import {
+  avisoDoPrazo,
+  classificarPrazo,
+  diasAteVencimento,
+  textoDoPrazo,
+} from './vencimento.js'
 
 let passou = 0
 let falhou = 0
@@ -98,6 +104,21 @@ verificar('inclui o break-even exato', serie.some((p) => Math.abs(p.preco - 20.5
 const [maisCinco, maisDez] = cenarios(callComprada, 20.79, [0.05, 0.1])
 verificar('ativo +5% (21,83)', maisCinco.resultado, 133.0, 0.5)
 verificar('ativo +10% (22,87)', maisDez.resultado, 236.9, 0.5)
+
+// --- Vencimento ----------------------------------------------------------
+titulo('Data de vencimento')
+const hoje = new Date('2026-07-21T10:00:00')
+verificar('vence daqui a 3 dias', diasAteVencimento('2026-07-24', hoje), 3)
+verificar('vence hoje', diasAteVencimento('2026-07-21', hoje), 0)
+verificar('já venceu', diasAteVencimento('2026-07-18', hoje), -3)
+verificar('sem data', Number.isNaN(diasAteVencimento('', hoje)), true)
+verificar('3 dias é reta final', classificarPrazo(3), 'reta-final')
+verificar('30 dias é tranquilo', classificarPrazo(30), 'tranquilo')
+verificar('vencida é classificada', classificarPrazo(-1), 'vencida')
+verificar('texto do prazo', textoDoPrazo(3), 'faltam 3 dias')
+verificar('texto no singular', textoDoPrazo(1), 'faltam 1 dia')
+verificar('reta final tem aviso', Boolean(avisoDoPrazo(3)), true)
+verificar('prazo longo não avisa', avisoDoPrazo(60), null)
 
 // --- Resumo --------------------------------------------------------------
 console.log(`\n${'-'.repeat(50)}`)

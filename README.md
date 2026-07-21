@@ -39,15 +39,22 @@ src/
     formato.js        vírgula decimal, R$, datas em pt-BR
     acoes.js          as 20 ações da lista
     cotacao.js        busca de cotação (função própria → brapi direto)
-    armazenamento.js  simulações no localStorage
+    opcoes.js         cadeia de opções (vencimentos e séries)
+    vencimento.js     dias restantes e o aviso de reta final
+    armazenamento.js  posições no localStorage, indexadas pelo código
   componentes/
     Formulario.jsx       campos da opção + seletor de ação + book
+    CadeiaDeOpcoes.jsx   navegador das séries negociadas do ativo
     Resumo.jsx           cartões de números e o painel do spread
-    GraficoPayoff.jsx    o gráfico (recharts) e a versão em tabela
-    SimulacoesSalvas.jsx salvar / carregar / apagar
-functions/api/cotacao.js  função serverless (Cloudflare Pages)
-api/cotacao.js            a mesma função, versão Vercel
+    GraficoPayoff.jsx    o gráfico (recharts), tabela e expandir/retrair
+    SimulacoesSalvas.jsx a carteira: posições salvas e resultado
+functions/api/*.js  funções serverless (Cloudflare Pages)
+api/*.js            as mesmas funções, versão Vercel
 ```
+
+No PC o layout é de duas colunas — formulário à esquerda, resumo e gráfico à
+direita — e o gráfico tem um botão **expandir** que o joga para a largura toda.
+No celular tudo vira uma coluna só.
 
 ## A matemática
 
@@ -75,6 +82,30 @@ Fonte: [brapi.dev](https://brapi.dev), plano grátis (15.000 requisições/mês)
 
 O frontend tenta primeiro a sua função `/api/cotacao`; se ela não existir (é o
 caso do `npm run dev` puro), cai para a chamada direta à brapi.
+
+### Cadeia de opções
+
+Em "Opções de {ATIVO}" dá para listar os vencimentos negociados, abrir as séries
+de um deles e clicar em **usar** para preencher o formulário inteiro — código,
+tipo, strike, vencimento, prêmio, bid e ask — sem digitar nada.
+
+**O que é grátis:** só **PETR4**. A brapi atende `/api/v2/options/*` sem token
+apenas para esse ativo; as demais ações exigem o **plano Pro** (pago) — um token
+do plano grátis não basta. Para elas, a ferramenta avisa e você preenche à mão.
+
+Os preços da cadeia são de **fechamento do último pregão**, não do momento atual.
+Confira o book na corretora antes de operar.
+
+## Minhas opções (a carteira)
+
+O **código da opção** é o identificador da posição. Salvar de novo o mesmo código
+atualiza a posição em vez de duplicar.
+
+A tabela mostra, por posição, o resultado **se o ativo terminar no preço de hoje**
+— que não é a marcação a mercado da opção (para isso seria preciso o prêmio
+negociado agora, que a ferramenta não acompanha). O preço de entrada fica
+congelado no momento em que você salva; o botão **Atualizar cotações** repuxa o
+preço dos ativos e recalcula tudo.
 
 ### Token em desenvolvimento local
 
@@ -124,7 +155,7 @@ O gráfico usa aqua para lucro e vermelho para prejuízo, um par validado para
 daltonismo (ΔE 9,9 em deuteranopia). Ainda assim, a cor é só reforço: o que
 carrega o sentido é a posição da linha em relação à linha do zero — que é
 rotulada — e os textos "Lucro"/"Prejuízo". Há também um botão **ver tabela** com
-os mesmos números, e a interface acompanha o modo claro/escuro do aparelho.
+os mesmos números. A interface é clara em todos os aparelhos.
 
 ## O que a ferramenta NÃO faz
 
