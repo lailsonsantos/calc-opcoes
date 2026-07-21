@@ -3,7 +3,11 @@
 // Existe por um motivo só: o token fica aqui, no Worker, e nunca chega ao
 // navegador. O celular chama a nossa rota; ela chama a brapi com o token.
 
-export const TICKER_VALIDO = /^[A-Z]{4}\d{1,2}$/
+// Não dá para assumir "4 letras + dígitos": B3SA3 tem dígito na 2ª posição,
+// e ETFs como BOVA11 têm 6 caracteres. Aceitamos letras e números, de 4 a 6,
+// o que já barra path traversal, query string e injeção — o valor é
+// normalizado (maiúsculas, sem espaços) antes de chegar aqui.
+export const TICKER_VALIDO = /^[A-Z0-9]{4,6}$/
 export const DATA_VALIDA = /^\d{4}-\d{2}-\d{2}$/
 
 export function json(corpo, status = 200, extras = {}) {

@@ -6,7 +6,7 @@
 //  2. Se a função não existir (ex.: `npm run dev` sem o wrangler), cai para a
 //     chamada direta à brapi, que atende PETR4, VALE3, ITUB4 e MGLU3 sem token.
 
-const URL_BRAPI = 'https://brapi.dev/api/quote'
+const URL_BRAPI = 'https://brapi.dev/api/v2/stocks/quote'
 
 export class ErroDeCotacao extends Error {
   constructor(mensagem, { precisaToken = false } = {}) {
@@ -55,13 +55,16 @@ async function viaFuncaoPropria(ticker, signal) {
 /** Camada 2: brapi direto do navegador. Só funciona nas 4 ações sem token. */
 async function viaBrapiDireto(ticker, signal) {
   const token = tokenDeDesenvolvimento()
-  const url = token
-    ? `${URL_BRAPI}/${encodeURIComponent(ticker)}?token=${encodeURIComponent(token)}`
-    : `${URL_BRAPI}/${encodeURIComponent(ticker)}`
+  const url = `${URL_BRAPI}?symbols=${encodeURIComponent(ticker)}`
 
   let resposta
   try {
-    resposta = await fetch(url, { signal })
+    resposta = await fetch(url, {
+      signal,
+      // Só em dev: o token vai no header, nunca na URL (query string entra
+      // em log de servidor e histórico do navegador).
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
   } catch {
     throw new ErroDeCotacao('Sem conexão com a brapi. Digite o preço manualmente.')
   }
@@ -74,7 +77,10 @@ async function viaBrapiDireto(ticker, signal) {
   }
 
   const dados = await lerJson(resposta)
-  const resultado = dados?.results?.[0]
+  // O v2 aninha em results[0].data; o v1 deixa na raiz. Aceita os dois.
+  const bruto = dados?.results?.[0]
+  const resultado = bruto?.data || bruto
+
   if (!resposta.ok || !resultado || typeof resultado.regularMarketPrice !== 'number') {
     throw new ErroDeCotacao(
       dados?.message || `Não consegui a cotação de ${ticker}. Digite o preço manualmente.`,

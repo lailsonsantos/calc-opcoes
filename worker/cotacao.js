@@ -12,7 +12,12 @@ export async function cotacao(url, env) {
     return json({ erro: 'Ticker inválido.' }, 400)
   }
 
-  const { resposta, dados } = await pedirBrapi(`https://brapi.dev/api/quote/${ticker}`, env)
+  // v2 é o endpoint que a brapi recomenda para integrações novas. O v1
+  // (/api/quote/{ticker}) continua no ar, mas sem previsão de manutenção.
+  const { resposta, dados } = await pedirBrapi(
+    `https://brapi.dev/api/v2/stocks/quote?symbols=${ticker}`,
+    env,
+  )
 
   if (semPermissao(resposta)) {
     return json(
@@ -25,14 +30,18 @@ export async function cotacao(url, env) {
     )
   }
 
-  const resultado = dados?.results?.[0]
+  // O v2 aninha os campos em results[0].data; o v1 os deixa na raiz.
+  // Aceitar os dois formatos evita quebrar se a resposta mudar de lado.
+  const bruto = dados?.results?.[0]
+  const resultado = bruto?.data || bruto
+
   if (!resposta.ok || typeof resultado?.regularMarketPrice !== 'number') {
     return json({ erro: dados?.message || `Sem cotação para ${ticker}.` }, 502)
   }
 
   return json(
     {
-      ticker: resultado.symbol || ticker,
+      ticker: bruto?.symbol || ticker,
       preco: resultado.regularMarketPrice,
       atualizadoEm: resultado.regularMarketTime || new Date().toISOString(),
     },

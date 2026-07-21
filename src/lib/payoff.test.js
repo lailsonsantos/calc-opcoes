@@ -19,6 +19,8 @@ import {
   resultadoDaEstrategia,
 } from './payoff.js'
 import { melhoresCompras, melhoresTravas, melhoresVendas } from './estrategias.js'
+import { ACOES } from './acoes.js'
+import { TICKER_VALIDO } from '../../worker/brapi.js'
 import {
   avisoDoPrazo,
   classificarPrazo,
@@ -182,6 +184,16 @@ const travas = melhoresTravas(cadeiaFalsa, { precoAlvo: 45, precoAtual: 40, quan
 verificar('achou pelo menos uma trava', travas.length > 0, true)
 verificar('a trava rende mais que a compra seca', travas[0].retorno > compras[0].retorno, true)
 verificar('trava tem ganho limitado', Number.isFinite(travas[0].ganhoMaximo), true)
+
+// --- Validação de ticker (usada pelas rotas do Worker) -------------------
+titulo('Regex de ticker aceita a lista toda e barra lixo')
+verificar('todas as 20 ações passam', ACOES.every((a) => TICKER_VALIDO.test(a.ticker)), true)
+// B3SA3 tem dígito na 2ª posição e reprovava na regex "4 letras + dígitos".
+verificar('B3SA3 passa', TICKER_VALIDO.test('B3SA3'), true)
+verificar('ETF de 6 letras passa', TICKER_VALIDO.test('BOVA11'), true)
+for (const lixo of ['../etc/passwd', 'PETR4?x=1', 'PETR4&a=b', '', 'A', 'AB CD', 'PETR4;rm']) {
+  verificar(`bloqueia ${JSON.stringify(lixo)}`, TICKER_VALIDO.test(lixo), false)
+}
 
 // --- Vencimento ----------------------------------------------------------
 titulo('Data de vencimento')
