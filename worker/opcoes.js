@@ -26,10 +26,16 @@ export async function opcoes(url, env) {
   const { resposta, dados } = await pedirBrapi(alvo, env)
 
   if (semPermissao(resposta)) {
+    // Com token configurado, o que falta é plano — não adianta mandar
+    // configurar token de novo. Sem token, a dica é outra.
     return json(
       {
-        erro: `A cadeia de opções de ${underlying} não está liberada no seu plano da brapi `
-          + '(sem token, só PETR4 funciona). Preencha os dados da opção à mão.',
+        erro: env.BRAPI_TOKEN
+          ? `A cadeia de opções de ${underlying} exige o plano Pro da brapi, que seu `
+            + 'token atual não cobre. Só PETR4 vem no plano grátis — preencha os dados '
+            + 'da opção à mão.'
+          : `A cadeia de opções de ${underlying} exige token e plano Pro. Sem token, `
+            + 'só PETR4 funciona — preencha os dados da opção à mão.',
       },
       401,
     )

@@ -134,8 +134,9 @@ export default function CadeiaDeOpcoes({
 
       {!cadeiaEhGratis(ticker) && vencimentos.length === 0 && !erro && (
         <p className="ajuda">
-          A cadeia de opções sem token cobre apenas PETR4. Para {ticker}, a brapi exige o
-          plano Pro — enquanto isso, preencha os dados da opção à mão.
+          A cadeia de opções de {ticker} exige o plano Pro da brapi — no plano grátis só
+          PETR4 é liberado. A <em>cotação</em> do ativo funciona normalmente; o que falta
+          são as séries. Enquanto isso, preencha os dados da opção à mão.
         </p>
       )}
 
